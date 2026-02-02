@@ -212,7 +212,7 @@ services:
         - VITE_API_URL=${VITE_API_URL:-}
     container_name: ludwigone-dashboard
     ports:
-      - "3001:80"
+      - "3002:80"
     depends_on:
       - api
     networks:
