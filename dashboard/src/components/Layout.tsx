@@ -23,7 +23,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex">
               <Link to="/" className="flex items-center space-x-3">
                 <img
-                  src="/logo.png"
+                  src="/admin/logo.png"
                   alt="LudwigOne Logo"
                   className="h-28"
                 />
@@ -87,7 +87,7 @@ export default function Layout({ children }: LayoutProps) {
                 Abmelden
               </Button>
               <img
-                src="/logo-right.png"
+                src="/admin/logo-right.png"
                 alt="Partner Logo"
                 className="h-20"
               />

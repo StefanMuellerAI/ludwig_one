@@ -44,7 +44,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       removeToken()
-      window.location.href = '/login'
+      window.location.href = '/admin/login'
     }
     return Promise.reject(error)
   }
@@ -198,7 +198,7 @@ export const login = async (credentials: LoginRequest): Promise<TokenResponse> =
 
 export const logout = (): void => {
   removeToken()
-  window.location.href = '/login'
+  window.location.href = '/admin/login'
 }
 
 export const getCurrentUser = async (): Promise<User> => {

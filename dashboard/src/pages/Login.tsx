@@ -39,7 +39,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center">
           <img
-            src="/logo.png"
+            src="/admin/logo.png"
             alt="LudwigOne Logo"
             className="mx-auto h-24 w-auto"
           />
