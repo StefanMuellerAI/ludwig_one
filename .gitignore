@@ -10,8 +10,11 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib (but not frontend/dashboard src/lib)
+/lib/
 lib64/
+!frontend/src/lib/
+!dashboard/src/lib/
 parts/
 sdist/
 var/
