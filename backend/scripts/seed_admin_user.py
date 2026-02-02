@@ -37,7 +37,8 @@ async def seed_admin():
             email="admin@ludwigone.com",
             hashed_password=get_password_hash("admin123"),
             is_active=True,
-            is_admin=True
+            is_admin=True,
+            must_change_password=True
         )
 
         db.add(admin)
