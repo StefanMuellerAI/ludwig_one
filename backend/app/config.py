@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     ollama_url: str = Field(default="http://ollama:11434", alias="OLLAMA_URL")
 
     # Application
+    app_base_url: str = Field(default="http://localhost:3000", alias="APP_BASE_URL")
     upload_max_size_mb: int = Field(default=500, alias="UPLOAD_MAX_SIZE_MB")
     output_retention_days: int = Field(default=7, alias="OUTPUT_RETENTION_DAYS")
     max_concurrent_vision_calls: int = Field(default=5, alias="MAX_CONCURRENT_VISION_CALLS")

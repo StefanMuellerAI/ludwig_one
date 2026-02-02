@@ -56,8 +56,8 @@ async def send_job_completion_email(job_id: str) -> Dict[str, Any]:
                     "reason": "No recipient email configured"
                 }
 
-            # Build URLs
-            base_url = f"http://localhost:{settings.api_port}"
+            # Build URLs using configured base URL
+            base_url = settings.app_base_url.rstrip('/')
             download_url = f"{base_url}/api/v1/jobs/{job_id}/download"
             insight_url = f"{base_url}/api/v1/jobs/{job_id}/insight"
 
