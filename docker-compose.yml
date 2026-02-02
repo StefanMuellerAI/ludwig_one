@@ -193,9 +193,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-}
     container_name: ludwigone-frontend
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     ports:
       - "3000:80"
     depends_on:
@@ -208,9 +208,9 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-}
     container_name: ludwigone-dashboard
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     ports:
       - "3001:80"
     depends_on:
