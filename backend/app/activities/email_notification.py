@@ -31,14 +31,23 @@ async def send_job_completion_email(job_id: str, error_message: Optional[str] = 
 
     async with async_session_maker() as db:
         try:
-            # Get job
+            # Get job - only select needed columns to avoid loading large blobs
             result = await db.execute(
-                select(Job).where(Job.id == job_id)
+                select(
+                    Job.id,
+                    Job.type,
+                    Job.status,
+                    Job.total_files,
+                    Job.failed_files
+                ).where(Job.id == job_id)
             )
-            job = result.scalar_one_or_none()
+            job = result.one_or_none()
 
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+
+            # Unpack job data (id, type, status, total_files, failed_files)
+            _, job_type, job_status, total_files, failed_files = job
 
             # Get recipient email from config (or use default)
             config_result = await db.execute(
@@ -63,15 +72,15 @@ async def send_job_completion_email(job_id: str, error_message: Optional[str] = 
             insight_url = f"{base_url}/api/v1/jobs/{job_id}/insight"
 
             # Count documents
-            total_documents = job.total_files - job.failed_files
+            total_documents = (total_files or 0) - (failed_files or 0)
 
             # Determine status
-            status = job.status.value if not error_message else "failed"
+            status = job_status.value if not error_message else "failed"
 
             # Send email
             sent = await email_service.send_job_completion_email(
                 job_id=str(job_id),
-                job_type=job.type.value,
+                job_type=job_type.value,
                 recipient_email=recipient_email,
                 download_url=download_url,
                 insight_url=insight_url,
