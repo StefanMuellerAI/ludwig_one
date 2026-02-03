@@ -2,7 +2,7 @@
 Authentication dependencies for route protection
 """
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,33 +11,15 @@ from app.database import get_db
 from app.models.user import User
 from app.auth.utils import decode_access_token
 from app.schemas.auth import CurrentUser
+from app.config import settings
 
 
 # HTTP Bearer token scheme
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
-) -> CurrentUser:
-    """
-    Get current authenticated user from JWT token.
-
-    Args:
-        credentials: HTTP Authorization header
-        db: Database session
-
-    Returns:
-        Current user
-
-    Raises:
-        HTTPException: If token is invalid or user not found
-    """
-    # Extract token
-    token = credentials.credentials
-
-    # Decode token
+async def _load_user_from_token(token: str, db: AsyncSession) -> CurrentUser:
+    """Load and validate a user from a JWT token."""
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(
@@ -46,7 +28,6 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Get user ID from token
     user_id: Optional[str] = payload.get("sub")
     if not user_id:
         raise HTTPException(
@@ -55,7 +36,6 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Get user from database
     result = await db.execute(
         select(User).where(User.id == user_id)
     )
@@ -83,6 +63,26 @@ async def get_current_user(
     )
 
 
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
+) -> CurrentUser:
+    """
+    Get current authenticated user from JWT token.
+    """
+    return await _load_user_from_token(credentials.credentials, db)
+
+
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[CurrentUser]:
+    """Return user if a valid token is present, otherwise None."""
+    if credentials is None:
+        return None
+    return await _load_user_from_token(credentials.credentials, db)
+
+
 async def require_admin(
     current_user: CurrentUser = Depends(get_current_user)
 ) -> CurrentUser:
@@ -98,6 +98,12 @@ async def require_admin(
     Raises:
         HTTPException: If user is not an admin
     """
+    if current_user.must_change_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password change required"
+        )
+
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -105,3 +111,21 @@ async def require_admin(
         )
 
     return current_user
+
+
+async def require_job_access(
+    request: Request,
+    current_user: Optional[CurrentUser] = Depends(get_optional_user)
+) -> None:
+    """
+    Allow access if a valid JWT user is present or a valid API key is provided.
+    """
+    if current_user:
+        return
+
+    api_key = request.headers.get("x-api-key") or request.query_params.get("api_key")
+    if not api_key or api_key != settings.job_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key"
+        )

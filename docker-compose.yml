@@ -83,6 +83,7 @@ services:
       API_PORT: ${API_PORT:-8000}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      JOB_API_KEY: ${JOB_API_KEY:?JOB_API_KEY is required}
 
       # JWT Authentication
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
@@ -151,6 +152,7 @@ services:
 
       # API (needed for config)
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JOB_API_KEY: ${JOB_API_KEY:?JOB_API_KEY is required}
 
       # Mistral
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:?MISTRAL_API_KEY is required}
@@ -195,6 +197,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL:-}
+        - VITE_API_KEY=${VITE_API_KEY:-}
     container_name: ludwigone-frontend
     ports:
       - "3000:80"
@@ -210,6 +213,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL:-}
+        - VITE_API_KEY=${VITE_API_KEY:-}
     container_name: ludwigone-dashboard
     ports:
       - "3002:80"

@@ -377,9 +377,9 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_active ON users(is_active);
 
--- Default admin user will be created by seed script
+-- Admin user should be created by seed script with explicit credentials:
+-- ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
 -- Run: docker-compose exec api python scripts/seed_admin_user.py
--- Username: admin, Password: admin123
 
 -- Audit Logs Table (Admin Action Tracking)
 CREATE TABLE audit_logs (

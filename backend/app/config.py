@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_access_token_expire_minutes: int = Field(default=1440, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES")  # 24 hours
 
+    # Job API Access (for public/user endpoints)
+    job_api_key: str = Field(alias="JOB_API_KEY")
+
     # Mistral API
     mistral_api_key: str = Field(alias="MISTRAL_API_KEY")
 
@@ -59,6 +62,7 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_llm_payloads: bool = Field(default=False, alias="LOG_LLM_PAYLOADS")
 
     class Config:
         env_file = ".env"

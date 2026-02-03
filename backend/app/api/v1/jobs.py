@@ -17,13 +17,14 @@ from app.config import settings
 from app.models import Job, JobType, JobStatus
 from app.schemas.job import JobResponse, JobListResponse, JobCreateResponse
 from app.workflows import TarProcessingWorkflow, PdfSplittingWorkflow
+from app.auth.dependencies import require_job_access
 
 logger = logging.getLogger(__name__)
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_job_access)])
 
 
 async def get_temporal_client() -> Client:

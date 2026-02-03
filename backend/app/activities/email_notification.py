@@ -68,8 +68,9 @@ async def send_job_completion_email(job_id: str, error_message: Optional[str] = 
 
             # Build URLs using configured base URL
             base_url = settings.app_base_url.rstrip('/')
-            download_url = f"{base_url}/api/v1/jobs/{job_id}/download"
-            insight_url = f"{base_url}/api/v1/jobs/{job_id}/insight"
+            api_key_param = f"?api_key={settings.job_api_key}" if settings.job_api_key else ""
+            download_url = f"{base_url}/api/v1/jobs/{job_id}/download{api_key_param}"
+            insight_url = f"{base_url}/api/v1/jobs/{job_id}/insight{api_key_param}"
 
             # Count documents
             total_documents = (total_files or 0) - (failed_files or 0)

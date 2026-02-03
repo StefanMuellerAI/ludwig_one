@@ -8,9 +8,9 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 if len(sys.argv) < 2:
-    password = "admin123"  # Default
-else:
-    password = sys.argv[1]
+    raise SystemExit("Usage: python scripts/generate_password_hash.py <password>")
+
+password = sys.argv[1]
 
 hashed = pwd_context.hash(password)
 print(f"Password: {password}")

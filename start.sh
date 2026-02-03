@@ -10,7 +10,7 @@ echo "🚀 Starting LudwigOne..."
 if [ ! -f .env ]; then
     echo "⚠️  No .env file found. Creating from .env.example..."
     cp .env.example .env
-    echo "⚠️  Please edit .env and set required values (POSTGRES_PASSWORD, SECRET_KEY, MISTRAL_API_KEY)"
+    echo "⚠️  Please edit .env and set required values (POSTGRES_PASSWORD, SECRET_KEY, MISTRAL_API_KEY, JOB_API_KEY)"
     exit 1
 fi
 
@@ -29,6 +29,11 @@ fi
 
 if [ -z "$MISTRAL_API_KEY" ]; then
     echo "❌ Error: MISTRAL_API_KEY not set in .env"
+    exit 1
+fi
+
+if [ -z "$JOB_API_KEY" ]; then
+    echo "❌ Error: JOB_API_KEY not set in .env"
     exit 1
 fi
 

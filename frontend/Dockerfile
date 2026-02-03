@@ -2,9 +2,11 @@ FROM node:20-alpine as build
 
 WORKDIR /app
 
-# Build argument for API URL
+# Build arguments for API settings
 ARG VITE_API_URL=""
+ARG VITE_API_KEY=""
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_API_KEY=$VITE_API_KEY
 
 # Copy package files
 COPY package.json package-lock.json* ./

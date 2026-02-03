@@ -12,6 +12,7 @@ from app.database import async_session_maker
 from app.models import Job, Document, Extraction, Category, PromptTemplate, APICallLog
 from app.services.llm_service import llm_service
 from app.schemas.structured import CategorizationResponse, PageCategorizationResponse
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +120,8 @@ async def categorize_and_rename_document(document_id: str) -> Dict[str, Any]:
                 api_provider="mistral" if not llm_service.use_ollama else "ollama",
                 model_name=template.model_name,
                 call_type="structured_output",
-                prompt_text=prompt[:1000],
-                response_text=categorization.model_dump_json(),
+                prompt_text=prompt[:1000] if settings.log_llm_payloads else None,
+                response_text=categorization.model_dump_json() if settings.log_llm_payloads else None,
                 duration_ms=duration_ms,
                 success=True
             )

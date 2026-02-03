@@ -178,6 +178,7 @@ See `.env.example` for all available configuration options.
 
 Key settings:
 - `MISTRAL_API_KEY` - Mistral API key (required)
+- `JOB_API_KEY` - API key required for job endpoints (required)
 - `UPLOAD_MAX_SIZE_MB` - Max upload size (default: 500)
 - `MAX_CONCURRENT_VISION_CALLS` - Concurrent Vision API calls (default: 5)
 - `VISION_API_MAX_RETRIES` - Max retries for Vision API (default: 5)

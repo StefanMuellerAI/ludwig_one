@@ -1,12 +1,21 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+const API_KEY = import.meta.env.VITE_API_KEY || ''
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+api.interceptors.request.use((config) => {
+  if (API_KEY) {
+    config.headers = config.headers || {}
+    config.headers['X-API-Key'] = API_KEY
+  }
+  return config
 })
 
 export interface Job {
@@ -80,13 +89,41 @@ export const getJob = async (jobId: string): Promise<Job> => {
 }
 
 // Download result archive
-export const downloadArchive = (jobId: string) => {
-  window.open(`${API_BASE_URL}/api/v1/jobs/${jobId}/download`, '_blank')
+const extractFilename = (contentDisposition?: string | null): string | null => {
+  if (!contentDisposition) return null
+  const match = contentDisposition.match(/filename=([^;]+)/i)
+  return match ? match[1].replace(/"/g, '').trim() : null
+}
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+// Download result archive
+export const downloadArchive = async (jobId: string) => {
+  const response = await api.get(`/api/v1/jobs/${jobId}/download`, {
+    responseType: 'blob',
+  })
+  const filename =
+    extractFilename(response.headers['content-disposition']) || `job_${jobId}_result.tar`
+  downloadBlob(response.data, filename)
 }
 
 // Download insight XML
-export const downloadInsight = (jobId: string) => {
-  window.open(`${API_BASE_URL}/api/v1/jobs/${jobId}/insight`, '_blank')
+export const downloadInsight = async (jobId: string) => {
+  const response = await api.get(`/api/v1/jobs/${jobId}/insight`, {
+    responseType: 'blob',
+  })
+  const filename =
+    extractFilename(response.headers['content-disposition']) || `insight_${jobId}.xml`
+  downloadBlob(response.data, filename)
 }
 
 // Get insight XML as text

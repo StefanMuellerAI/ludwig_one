@@ -12,6 +12,7 @@ from app.database import async_session_maker
 from app.models import Job, Document, Extraction, ExtractionType, APICallLog
 from app.services.document_processor import document_processor
 from app.services.llm_service import llm_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ async def extract_document_content(document_id: str) -> Dict[str, Any]:
                         model_name="mistral-large-latest",
                         call_type="vision",
                         image_count=1,
-                        response_text=vision_text[:1000],  # Truncate for storage
+                        response_text=vision_text[:1000] if settings.log_llm_payloads else None,
                         total_tokens=token_count,
                         duration_ms=duration_ms,
                         success=True
