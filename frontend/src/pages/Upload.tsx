@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Upload as UploadIcon, FileArchive, FileText, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload as UploadIcon, FileArchive, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { uploadTarArchive, uploadPdf } from '../lib/api'
 import ConfirmDialog from '../components/ConfirmDialog'
 
@@ -150,9 +150,16 @@ export default function Upload() {
                 <button
                   onClick={handleUpload}
                   disabled={uploadMutation.isPending}
-                  className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
                 >
-                  {uploadMutation.isPending ? 'Wird hochgeladen...' : 'Hochladen & Verarbeiten'}
+                  {uploadMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Wird hochgeladen...
+                    </>
+                  ) : (
+                    'Hochladen & Verarbeiten'
+                  )}
                 </button>
               </div>
             </div>
