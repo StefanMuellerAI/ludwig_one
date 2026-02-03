@@ -151,6 +151,17 @@ class TarProcessingWorkflow:
             except Exception as update_error:
                 workflow.logger.error(f"Failed to update job status: {update_error}")
 
+            # Send failure notification email
+            try:
+                await workflow.execute_activity(
+                    send_job_completion_email,
+                    args=[job_id, str(e)],
+                    start_to_close_timeout=timedelta(minutes=2),
+                    retry_policy=RetryPolicy(maximum_attempts=2)
+                )
+            except Exception as email_error:
+                workflow.logger.error(f"Failed to send failure email: {email_error}")
+
             raise
 
     async def _extract_tar_archive(self, job_id: str) -> List[str]:

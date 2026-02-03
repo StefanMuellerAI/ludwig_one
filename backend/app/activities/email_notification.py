@@ -2,7 +2,7 @@
 Email Notification Activity
 """
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from temporalio import activity
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,12 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 @activity.defn(name="send_job_completion_email")
-async def send_job_completion_email(job_id: str) -> Dict[str, Any]:
+async def send_job_completion_email(job_id: str, error_message: Optional[str] = None) -> Dict[str, Any]:
     """
-    Send email notification for completed job.
+    Send email notification for completed or failed job.
 
     Args:
         job_id: Job UUID
+        error_message: Optional error message if job failed
 
     Returns:
         Dict with send result
@@ -64,6 +65,9 @@ async def send_job_completion_email(job_id: str) -> Dict[str, Any]:
             # Count documents
             total_documents = job.total_files - job.failed_files
 
+            # Determine status
+            status = job.status.value if not error_message else "failed"
+
             # Send email
             sent = await email_service.send_job_completion_email(
                 job_id=str(job_id),
@@ -72,7 +76,8 @@ async def send_job_completion_email(job_id: str) -> Dict[str, Any]:
                 download_url=download_url,
                 insight_url=insight_url,
                 total_documents=total_documents,
-                status=job.status.value
+                status=status,
+                error_message=error_message
             )
 
             logger.info(f"Email notification sent: {sent}")
