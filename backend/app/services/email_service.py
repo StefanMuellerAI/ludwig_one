@@ -230,6 +230,10 @@ LudwigOne - Intelligente Dokumentenverarbeitung
             # HTML version
             styles = EmailService._get_base_styles()
             
+            # Logo URL from base URL
+            base_url = settings.app_base_url.rstrip('/')
+            logo_url = f"{base_url}/logo.png"
+            
             if is_success:
                 html_content = f"""
 <!DOCTYPE html>
@@ -243,7 +247,7 @@ LudwigOne - Intelligente Dokumentenverarbeitung
     <div class="wrapper">
         <div class="container">
             <div class="header">
-                <h1>LudwigOne</h1>
+                <img src="{logo_url}" alt="LudwigOne" style="max-height: 80px; width: auto;">
             </div>
             <div class="content">
                 <div style="text-align: center;">
@@ -300,7 +304,7 @@ LudwigOne - Intelligente Dokumentenverarbeitung
     <div class="wrapper">
         <div class="container">
             <div class="header">
-                <h1>LudwigOne</h1>
+                <img src="{logo_url}" alt="LudwigOne" style="max-height: 80px; width: auto;">
             </div>
             <div class="content">
                 <div style="text-align: center;">
