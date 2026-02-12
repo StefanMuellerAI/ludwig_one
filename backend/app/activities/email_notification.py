@@ -66,11 +66,10 @@ async def send_job_completion_email(job_id: str, error_message: Optional[str] = 
                     "reason": "No recipient email configured"
                 }
 
-            # Build URLs using configured base URL
+            # Build URLs -- link to the frontend job detail page
             base_url = settings.app_base_url.rstrip('/')
-            api_key_param = f"?api_key={settings.job_api_key}" if settings.job_api_key else ""
-            download_url = f"{base_url}/api/v1/jobs/{job_id}/download{api_key_param}"
-            insight_url = f"{base_url}/api/v1/jobs/{job_id}/insight{api_key_param}"
+            download_url = f"{base_url}/jobs/{job_id}"
+            insight_url = f"{base_url}/jobs/{job_id}"
 
             # Count documents
             total_documents = (total_files or 0) - (failed_files or 0)

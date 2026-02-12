@@ -11,9 +11,14 @@ export default function Upload() {
   const [dragActive, setDragActive] = useState(false)
   const [showInvalidFileDialog, setShowInvalidFileDialog] = useState(false)
 
+  const isArchiveFile = (name: string) => {
+    const lower = name.toLowerCase()
+    return lower.endsWith('.tar') || lower.endsWith('.tar.gz') || lower.endsWith('.tgz') || lower.endsWith('.zip')
+  }
+
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (file.name.endsWith('.pdf')) {
+      if (file.name.toLowerCase().endsWith('.pdf')) {
         return uploadPdf(file)
       } else {
         return uploadTarArchive(file)
@@ -52,7 +57,7 @@ export default function Upload() {
   }
 
   const handleFile = (file: File) => {
-    const validExtensions = ['.tar', '.tar.gz', '.tgz', '.pdf']
+    const validExtensions = ['.tar', '.tar.gz', '.tgz', '.zip', '.pdf']
     const isValid = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
 
     if (!isValid) {
@@ -104,7 +109,7 @@ export default function Upload() {
             type="file"
             id="file-upload"
             className="hidden"
-            accept=".tar,.tar.gz,.tgz,.pdf"
+            accept=".tar,.tar.gz,.tgz,.zip,.pdf"
             onChange={handleChange}
           />
 
@@ -121,7 +126,7 @@ export default function Upload() {
                 <p className="mt-2 text-sm text-gray-500">oder per Drag & Drop</p>
               </div>
               <p className="mt-2 text-xs text-gray-500">
-                TAR, TAR.GZ, TGZ oder PDF bis zu 500MB
+                TAR, TAR.GZ, TGZ, ZIP oder PDF bis zu 500MB
               </p>
             </>
           ) : (
@@ -131,7 +136,7 @@ export default function Upload() {
               </div>
               <div>
                 <div className="flex items-center justify-center space-x-2">
-                  {selectedFile.name.endsWith('.pdf') ? (
+                  {selectedFile.name.toLowerCase().endsWith('.pdf') ? (
                     <FileText className="w-5 h-5 text-red-500" />
                   ) : (
                     <FileArchive className="w-5 h-5 text-blue-500" />
@@ -182,10 +187,10 @@ export default function Upload() {
           <div className="border rounded-lg p-4">
             <div className="flex items-center">
               <FileArchive className="w-8 h-8 text-blue-500" />
-              <h3 className="ml-3 text-lg font-medium text-gray-900">TAR-Archiv</h3>
+              <h3 className="ml-3 text-lg font-medium text-gray-900">Archiv (TAR / ZIP)</h3>
             </div>
             <p className="mt-2 text-sm text-gray-600">
-              Laden Sie ein TAR-Archiv mit mehreren Dokumenten hoch. Jede Datei wird:
+              Laden Sie ein TAR- oder ZIP-Archiv mit mehreren Dokumenten hoch. Jede Datei wird:
             </p>
             <ul className="mt-2 text-sm text-gray-600 list-disc list-inside space-y-1">
               <li>Automatisch kategorisiert</li>
@@ -218,7 +223,7 @@ export default function Upload() {
         onClose={() => setShowInvalidFileDialog(false)}
         onConfirm={() => {}}
         title="Ungültiger Dateityp"
-        message="Bitte laden Sie ein TAR-Archiv (.tar, .tar.gz, .tgz) oder eine PDF-Datei (.pdf) hoch."
+        message="Bitte laden Sie ein Archiv (.tar, .tar.gz, .tgz, .zip) oder eine PDF-Datei (.pdf) hoch."
         confirmText="OK"
         cancelText="Schließen"
         variant="warning"

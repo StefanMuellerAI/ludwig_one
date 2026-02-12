@@ -57,8 +57,8 @@ async def upload_tar_archive(
     """
     try:
         # Validate file
-        if not file.filename.endswith((".tar", ".tar.gz", ".tgz")):
-            raise HTTPException(status_code=400, detail="File must be a TAR archive")
+        if not file.filename.endswith((".tar", ".tar.gz", ".tgz", ".zip")):
+            raise HTTPException(status_code=400, detail="File must be a TAR or ZIP archive")
 
         # Read file
         file_blob = await file.read()

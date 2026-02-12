@@ -183,13 +183,13 @@ class EmailService:
             if is_success:
                 message["Subject"] = f"LudwigOne: Verarbeitung abgeschlossen - {total_documents} Dokumente"
             else:
-                message["Subject"] = f"LudwigOne: Verarbeitung fehlgeschlagen - Job {job_id[:8]}"
+                message["Subject"] = f"LudwigOne: Verarbeitung fehlgeschlagen"
             
             message["From"] = settings.smtp_username
             message["To"] = recipient_email
 
             # Format job type for display
-            job_type_display = "TAR-Archiv Verarbeitung" if job_type == "tar_processing" else "PDF Splitting"
+            job_type_display = "Archiv-Verarbeitung" if job_type == "tar_processing" else "PDF Splitting"
 
             # Plain text version
             if is_success:
@@ -198,13 +198,10 @@ LudwigOne - Dokumentenverarbeitung
 
 Status: Erfolgreich abgeschlossen
 
-Job-Details:
-- Job ID: {job_id}
-- Typ: {job_type_display}
-- Verarbeitete Dokumente: {total_documents}
+Verarbeitungstyp: {job_type_display}
+Verarbeitete Dokumente: {total_documents}
 
-Ergebnisse herunterladen: {download_url}
-Insight-Report ansehen: {insight_url}
+Ergebnisse ansehen und herunterladen: {download_url}
 
 ---
 LudwigOne - Intelligente Dokumentenverarbeitung
@@ -215,10 +212,7 @@ LudwigOne - Dokumentenverarbeitung
 
 Status: Fehlgeschlagen
 
-Job-Details:
-- Job ID: {job_id}
-- Typ: {job_type_display}
-
+Verarbeitungstyp: {job_type_display}
 Fehlermeldung: {error_message or 'Unbekannter Fehler'}
 
 Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.
@@ -260,10 +254,6 @@ LudwigOne - Intelligente Dokumentenverarbeitung
 
                 <table class="info-table">
                     <tr>
-                        <td>Job ID</td>
-                        <td>{job_id[:8]}...</td>
-                    </tr>
-                    <tr>
                         <td>Verarbeitungstyp</td>
                         <td>{job_type_display}</td>
                     </tr>
@@ -274,8 +264,7 @@ LudwigOne - Intelligente Dokumentenverarbeitung
                 </table>
 
                 <div class="button-container">
-                    <a href="{download_url}" class="button">Ergebnisse herunterladen</a>
-                    <a href="{insight_url}" class="button button-secondary">Insight-Report</a>
+                    <a href="{download_url}" class="button">Ergebnisse ansehen</a>
                 </div>
 
                 <div class="message">
@@ -316,10 +305,6 @@ LudwigOne - Intelligente Dokumentenverarbeitung
                 </p>
 
                 <table class="info-table">
-                    <tr>
-                        <td>Job ID</td>
-                        <td>{job_id[:8]}...</td>
-                    </tr>
                     <tr>
                         <td>Verarbeitungstyp</td>
                         <td>{job_type_display}</td>
