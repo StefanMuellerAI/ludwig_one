@@ -67,8 +67,8 @@ class PdfSplittingWorkflow:
                     task = workflow.execute_activity(
                         extract_document_content,
                         args=[page_id],
-                        start_to_close_timeout=timedelta(minutes=10),
-                        heartbeat_timeout=timedelta(minutes=5),
+                        start_to_close_timeout=timedelta(minutes=30),
+                        heartbeat_timeout=timedelta(minutes=10),
                         retry_policy=RetryPolicy(
                             maximum_attempts=3,
                             initial_interval=timedelta(seconds=5),

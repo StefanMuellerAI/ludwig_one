@@ -65,8 +65,8 @@ class TarProcessingWorkflow:
                     task = workflow.execute_activity(
                         extract_document_content,
                         args=[doc_id],
-                        start_to_close_timeout=timedelta(minutes=10),
-                        heartbeat_timeout=timedelta(minutes=5),
+                        start_to_close_timeout=timedelta(minutes=30),
+                        heartbeat_timeout=timedelta(minutes=10),
                         retry_policy=RetryPolicy(
                             maximum_attempts=3,
                             initial_interval=timedelta(seconds=5),
@@ -89,7 +89,7 @@ class TarProcessingWorkflow:
                 task = workflow.execute_activity(
                     categorize_and_rename_document,
                     args=[doc_id],
-                    start_to_close_timeout=timedelta(minutes=10),
+                    start_to_close_timeout=timedelta(minutes=15),
                     retry_policy=RetryPolicy(
                         maximum_attempts=3,
                         initial_interval=timedelta(seconds=5),
@@ -106,7 +106,7 @@ class TarProcessingWorkflow:
             insight_xml = await workflow.execute_activity(
                 generate_insight_report,
                 args=[job_id],
-                start_to_close_timeout=timedelta(minutes=15),
+                start_to_close_timeout=timedelta(minutes=30),
                 retry_policy=RetryPolicy(maximum_attempts=3)
             )
 
@@ -115,7 +115,7 @@ class TarProcessingWorkflow:
             archive_info = await workflow.execute_activity(
                 build_output_archive,
                 args=[job_id],
-                start_to_close_timeout=timedelta(minutes=10),
+                start_to_close_timeout=timedelta(minutes=20),
                 retry_policy=RetryPolicy(maximum_attempts=3)
             )
 
