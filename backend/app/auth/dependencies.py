@@ -118,14 +118,21 @@ async def require_job_access(
     current_user: Optional[CurrentUser] = Depends(get_optional_user)
 ) -> None:
     """
-    Allow access if a valid JWT user is present or a valid API key is provided.
+    Allow access if:
+    - A valid JWT user is present, OR
+    - A valid API key is provided (for email download links), OR
+    - No API key is provided (access controlled by Nginx Basic Auth)
     """
     if current_user:
         return
 
+    # If an API key is provided, validate it (for email links)
     api_key = request.headers.get("x-api-key") or request.query_params.get("api_key")
-    if not api_key or api_key != settings.job_api_key:
+    if api_key and api_key != settings.job_api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing API key"
+            detail="Invalid API key"
         )
+
+    # Allow access -- Nginx Basic Auth protects the endpoints externally
+    return
