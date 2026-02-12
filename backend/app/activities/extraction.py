@@ -43,11 +43,18 @@ async def extract_document_content(document_id: str) -> Dict[str, Any]:
 
             logger.info(f"Extracting content from {document.original_filename}")
 
-            # Extract content based on file type
-            text_content, images = await document_processor.extract_content(
-                document.original_blob,
-                document.file_type
-            )
+            # Extract content based on file type -- catch errors to continue processing
+            text_content = None
+            images = []
+            content_extraction_error = None
+            try:
+                text_content, images = await document_processor.extract_content(
+                    document.original_blob,
+                    document.file_type
+                )
+            except Exception as e:
+                content_extraction_error = str(e)
+                logger.error(f"Content extraction failed for {document.original_filename}: {e}, continuing with empty content")
 
             activity.heartbeat(f"Extracted {len(images)} images")
 
@@ -67,6 +74,7 @@ async def extract_document_content(document_id: str) -> Dict[str, Any]:
 
             # Process images with Vision API
             vision_extractions = []
+            vision_failures = 0
             for idx, image_blob in enumerate(images):
                 activity.heartbeat(f"Processing image {idx + 1}/{len(images)}")
 
@@ -74,7 +82,7 @@ async def extract_document_content(document_id: str) -> Dict[str, Any]:
                     # Optimize image
                     optimized_image = await document_processor.optimize_image_for_vision_api(image_blob)
 
-                    # Call Vision API with retry (handled by Temporal)
+                    # Call Vision API (LLM service handles retries internally)
                     start_time = datetime.utcnow()
 
                     vision_text = await llm_service.call_vision_api(
@@ -119,15 +127,16 @@ async def extract_document_content(document_id: str) -> Dict[str, Any]:
                     logger.info(f"Vision extraction {idx + 1}: {token_count} tokens in {duration_ms}ms")
 
                 except Exception as e:
-                    logger.error(f"Vision API failed for image {idx + 1}: {e}")
+                    vision_failures += 1
+                    logger.error(f"Vision API failed for image {idx + 1}/{len(images)}: {e}")
 
-                    # Store failed extraction
+                    # Store failed extraction but continue with remaining images
                     failed_extraction = Extraction(
                         document_id=document.id,
                         extraction_type=ExtractionType.VISION,
                         image_blob=image_blob,
                         extraction_status="failed",
-                        error_message=str(e)
+                        error_message=str(e)[:500]
                     )
                     db.add(failed_extraction)
 
@@ -139,12 +148,21 @@ async def extract_document_content(document_id: str) -> Dict[str, Any]:
                         call_type="vision",
                         image_count=1,
                         success=False,
-                        error_message=str(e)
+                        error_message=str(e)[:500]
                     )
                     db.add(api_log)
 
-            # Update document status
-            document.processing_status = "extracted"
+            if vision_failures > 0:
+                logger.warning(f"Document {document.original_filename}: {vision_failures}/{len(images)} vision extractions failed")
+
+            # Update document status -- mark as extracted even with partial failures
+            extraction_status = "extracted"
+            if content_extraction_error and not text_content and not vision_extractions:
+                extraction_status = "extraction_failed"
+            elif vision_failures > 0:
+                extraction_status = "extracted_partial"
+
+            document.processing_status = extraction_status
             document.total_tokens = sum([
                 text_extraction.token_count if text_extraction else 0,
                 *[ve.token_count for ve in vision_extractions]
@@ -165,7 +183,9 @@ async def extract_document_content(document_id: str) -> Dict[str, Any]:
                 "text_extracted": text_content is not None,
                 "images_processed": len(images),
                 "images_successful": len(vision_extractions),
-                "total_tokens": document.total_tokens
+                "images_failed": vision_failures,
+                "total_tokens": document.total_tokens,
+                "status": extraction_status
             }
 
         except Exception as e:

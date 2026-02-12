@@ -66,8 +66,13 @@ async def build_output_archive(job_id: str) -> Dict[str, Any]:
                 activity.heartbeat(f"Grouped into {len(by_category)} categories")
 
                 # Add documents to archive
+                doc_count = 0
+                total_docs = sum(len(docs) for docs in by_category.values())
                 for category_name, category_docs in by_category.items():
                     for doc in category_docs:
+                        doc_count += 1
+                        activity.heartbeat(f"Adding document {doc_count}/{total_docs} to archive")
+
                         # Determine filename
                         filename = doc.assigned_filename or doc.original_filename
 

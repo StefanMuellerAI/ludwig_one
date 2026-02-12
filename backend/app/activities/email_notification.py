@@ -97,10 +97,15 @@ async def send_job_completion_email(job_id: str, error_message: Optional[str] = 
                 "recipient": recipient_email
             }
 
-        except Exception as e:
-            logger.error(f"Email notification failed: {e}")
-            # Don't fail the workflow if email fails
+        except ValueError as e:
+            # Permanent errors (missing config, job not found) -- don't retry
+            logger.error(f"Email notification permanent error: {e}")
             return {
                 "sent": False,
                 "error": str(e)
             }
+
+        except Exception as e:
+            # Transient errors (network, SMTP timeout) -- re-raise for Temporal retry
+            logger.error(f"Email notification transient error, will retry: {e}")
+            raise

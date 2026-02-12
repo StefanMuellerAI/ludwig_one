@@ -57,6 +57,7 @@ class TarProcessingWorkflow:
             workflow.logger.info("Step 2: Extracting content from documents")
 
             # Process in batches of 5
+            extraction_failures = 0
             for i in range(0, len(document_ids), 5):
                 batch = document_ids[i:i + 5]
 
@@ -68,38 +69,60 @@ class TarProcessingWorkflow:
                         start_to_close_timeout=timedelta(minutes=30),
                         heartbeat_timeout=timedelta(minutes=10),
                         retry_policy=RetryPolicy(
-                            maximum_attempts=3,
-                            initial_interval=timedelta(seconds=5),
-                            backoff_coefficient=1.5,
-                            maximum_interval=timedelta(seconds=30)
+                            maximum_attempts=5,
+                            initial_interval=timedelta(seconds=10),
+                            backoff_coefficient=2.0,
+                            maximum_interval=timedelta(seconds=60)
                         )
                     )
                     extraction_tasks.append(task)
 
-                # Wait for batch to complete
-                batch_results = await asyncio.gather(*extraction_tasks)
+                # Wait for batch - continue on partial failures
+                batch_results = await asyncio.gather(*extraction_tasks, return_exceptions=True)
+
+                for idx, result in enumerate(batch_results):
+                    if isinstance(result, BaseException):
+                        extraction_failures += 1
+                        workflow.logger.error(f"Extraction failed for document {batch[idx]}: {result}")
 
                 workflow.logger.info(f"Processed batch {i // 5 + 1}, total: {len(batch_results)} extractions")
 
-            # Step 3: Categorize and rename documents in parallel
+            if extraction_failures > 0:
+                workflow.logger.warning(f"{extraction_failures} documents failed extraction, continuing with remaining")
+
+            # Step 3: Categorize and rename documents in batches of 5
             workflow.logger.info("Step 3: Categorizing documents")
 
-            categorization_tasks = []
-            for doc_id in document_ids:
-                task = workflow.execute_activity(
-                    categorize_and_rename_document,
-                    args=[doc_id],
-                    start_to_close_timeout=timedelta(minutes=15),
-                    retry_policy=RetryPolicy(
-                        maximum_attempts=3,
-                        initial_interval=timedelta(seconds=5),
-                        backoff_coefficient=2.0
-                    )
-                )
-                categorization_tasks.append(task)
+            categorization_failures = 0
+            for i in range(0, len(document_ids), 5):
+                batch = document_ids[i:i + 5]
 
-            categorization_results = await asyncio.gather(*categorization_tasks)
-            workflow.logger.info(f"Categorized {len(categorization_results)} documents")
+                categorization_tasks = []
+                for doc_id in batch:
+                    task = workflow.execute_activity(
+                        categorize_and_rename_document,
+                        args=[doc_id],
+                        start_to_close_timeout=timedelta(minutes=15),
+                        retry_policy=RetryPolicy(
+                            maximum_attempts=5,
+                            initial_interval=timedelta(seconds=5),
+                            backoff_coefficient=2.0,
+                            maximum_interval=timedelta(seconds=60)
+                        )
+                    )
+                    categorization_tasks.append(task)
+
+                batch_results = await asyncio.gather(*categorization_tasks, return_exceptions=True)
+
+                for idx, result in enumerate(batch_results):
+                    if isinstance(result, BaseException):
+                        categorization_failures += 1
+                        workflow.logger.error(f"Categorization failed for document {batch[idx]}: {result}")
+
+            if categorization_failures > 0:
+                workflow.logger.warning(f"{categorization_failures} documents failed categorization, continuing")
+
+            workflow.logger.info(f"Categorized documents (failures: {categorization_failures})")
 
             # Step 4: Generate insight report
             workflow.logger.info("Step 4: Generating insight report")

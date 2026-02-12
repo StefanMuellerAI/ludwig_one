@@ -58,6 +58,7 @@ class PdfSplittingWorkflow:
             # Step 2: Process pages in parallel (max 5 concurrent)
             workflow.logger.info("Step 2: Processing pages")
             processed_ids = []
+            extraction_failures = 0
 
             for i in range(0, len(page_ids), 5):
                 batch = page_ids[i:i + 5]
@@ -70,18 +71,27 @@ class PdfSplittingWorkflow:
                         start_to_close_timeout=timedelta(minutes=30),
                         heartbeat_timeout=timedelta(minutes=10),
                         retry_policy=RetryPolicy(
-                            maximum_attempts=3,
-                            initial_interval=timedelta(seconds=5),
-                            backoff_coefficient=1.5,
-                            maximum_interval=timedelta(seconds=30)
+                            maximum_attempts=5,
+                            initial_interval=timedelta(seconds=10),
+                            backoff_coefficient=2.0,
+                            maximum_interval=timedelta(seconds=60)
                         )
                     )
                     extraction_tasks.append(task)
 
-                batch_results = await asyncio.gather(*extraction_tasks)
-                processed_ids.extend([r["document_id"] for r in batch_results])
+                batch_results = await asyncio.gather(*extraction_tasks, return_exceptions=True)
+
+                for idx, result in enumerate(batch_results):
+                    if isinstance(result, BaseException):
+                        extraction_failures += 1
+                        workflow.logger.error(f"Extraction failed for page {batch[idx]}: {result}")
+                    else:
+                        processed_ids.append(result["document_id"])
 
                 workflow.logger.info(f"Processed page batch {i // 5 + 1}")
+
+            if extraction_failures > 0:
+                workflow.logger.warning(f"{extraction_failures} pages failed extraction, continuing with {len(processed_ids)} pages")
 
             # Step 3: Categorize pages (sequential for ordering)
             workflow.logger.info("Step 3: Categorizing pages")
@@ -101,27 +111,39 @@ class PdfSplittingWorkflow:
             merged_ids = await self._merge_pages_by_category(job_id, processed_ids)
             workflow.logger.info(f"Merged into {len(merged_ids)} documents")
 
-            # Step 5: Assign filenames to merged documents in parallel
+            # Step 5: Assign filenames to merged documents in batches of 5
             workflow.logger.info("Step 5: Assigning filenames")
 
-            filename_tasks = []
-            for doc_id in merged_ids:
-                task = workflow.execute_activity(
-                    assign_filename_to_merged_document,
-                    args=[doc_id],
-                    start_to_close_timeout=timedelta(minutes=10),
-                    retry_policy=RetryPolicy(maximum_attempts=3)
-                )
-                filename_tasks.append(task)
+            filename_failures = 0
+            for i in range(0, len(merged_ids), 5):
+                batch = merged_ids[i:i + 5]
 
-            await asyncio.gather(*filename_tasks)
+                filename_tasks = []
+                for doc_id in batch:
+                    task = workflow.execute_activity(
+                        assign_filename_to_merged_document,
+                        args=[doc_id],
+                        start_to_close_timeout=timedelta(minutes=10),
+                        retry_policy=RetryPolicy(maximum_attempts=5)
+                    )
+                    filename_tasks.append(task)
+
+                batch_results = await asyncio.gather(*filename_tasks, return_exceptions=True)
+
+                for idx, result in enumerate(batch_results):
+                    if isinstance(result, BaseException):
+                        filename_failures += 1
+                        workflow.logger.error(f"Filename assignment failed for document {batch[idx]}: {result}")
+
+            if filename_failures > 0:
+                workflow.logger.warning(f"{filename_failures} documents failed filename assignment, continuing")
 
             # Step 6: Generate insight report
             workflow.logger.info("Step 6: Generating insight report")
             await workflow.execute_activity(
                 generate_insight_report,
                 args=[job_id],
-                start_to_close_timeout=timedelta(minutes=15),
+                start_to_close_timeout=timedelta(minutes=30),
                 retry_policy=RetryPolicy(maximum_attempts=3)
             )
 
@@ -130,7 +152,7 @@ class PdfSplittingWorkflow:
             archive_info = await workflow.execute_activity(
                 build_output_archive,
                 args=[job_id],
-                start_to_close_timeout=timedelta(minutes=10),
+                start_to_close_timeout=timedelta(minutes=20),
                 retry_policy=RetryPolicy(maximum_attempts=3)
             )
 

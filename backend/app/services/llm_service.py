@@ -71,7 +71,7 @@ class LLMService:
         images: Optional[List[bytes]]
     ) -> T:
         """Call Mistral API with structured output and retry on validation errors"""
-        max_retries = 3
+        max_retries = 5
         last_error = None
 
         for attempt in range(max_retries):
@@ -91,14 +91,17 @@ class LLMService:
                 else:
                     messages = [{"role": "user", "content": prompt}]
 
-                # Call API with JSON mode (guarantees valid JSON)
-                response = await asyncio.to_thread(
-                    self.mistral_client.chat.complete,
-                    model=model_name,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    response_format={"type": "json_object"}
+                # Call API with JSON mode and timeout protection
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.mistral_client.chat.complete,
+                        model=model_name,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        response_format={"type": "json_object"}
+                    ),
+                    timeout=120.0
                 )
 
                 # Parse and validate response against Pydantic schema
@@ -109,22 +112,28 @@ class LLMService:
                 logger.info(f"Mistral call successful on attempt {attempt + 1}: {response.usage.total_tokens} tokens")
                 return validated_response
 
+            except asyncio.TimeoutError:
+                last_error = TimeoutError(f"Mistral API call timed out after 120s (attempt {attempt + 1}/{max_retries})")
+                logger.warning(str(last_error))
+
             except Exception as e:
                 last_error = e
                 response_preview = response_text[:500] if 'response_text' in locals() else 'N/A'
                 logger.warning(
-                    f"Mistral validation error on attempt {attempt + 1}/{max_retries}: {e}\n"
+                    f"Mistral error on attempt {attempt + 1}/{max_retries}: {e}\n"
                     f"Response preview: {response_preview}\n"
                     f"Expected schema: {response_model.__name__}"
                 )
 
-                # If this was the last attempt, raise the error
-                if attempt == max_retries - 1:
-                    logger.error(f"Mistral API failed after {max_retries} attempts")
-                    raise last_error
+            # If this was the last attempt, raise the error
+            if attempt == max_retries - 1:
+                logger.error(f"Mistral API failed after {max_retries} attempts")
+                raise last_error
 
-                # Wait before retry (exponential backoff)
-                await asyncio.sleep(2 ** attempt)
+            # Wait before retry (exponential backoff: 2s, 4s, 8s, 16s)
+            backoff = min(2 ** (attempt + 1), 32)
+            logger.info(f"Retrying in {backoff}s...")
+            await asyncio.sleep(backoff)
 
         # Should never reach here, but just in case
         raise last_error or Exception("Mistral API call failed")
@@ -289,34 +298,57 @@ class LLMService:
             raise
 
     async def _call_mistral_vision(self, image_bytes: bytes, prompt: str, model_name: str) -> str:
-        """Call Mistral vision API"""
-        try:
-            import base64
-            img_b64 = base64.b64encode(image_bytes).decode('utf-8')
+        """Call Mistral vision API with timeout and retry"""
+        max_retries = 5
+        last_error = None
 
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": f"data:image/jpeg;base64,{img_b64}"}
-                    ]
-                }
-            ]
+        import base64
+        img_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
-            response = await asyncio.to_thread(
-                self.mistral_client.chat.complete,
-                model=model_name,
-                messages=messages
-            )
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": f"data:image/jpeg;base64,{img_b64}"}
+                ]
+            }
+        ]
 
-            result = response.choices[0].message.content
-            logger.info(f"Mistral vision call successful: {response.usage.total_tokens} tokens")
-            return result
+        for attempt in range(max_retries):
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.mistral_client.chat.complete,
+                        model=model_name,
+                        messages=messages
+                    ),
+                    timeout=120.0
+                )
 
-        except Exception as e:
-            logger.error(f"Mistral vision API error: {e}")
-            raise
+                result = response.choices[0].message.content
+                logger.info(f"Mistral vision call successful: {response.usage.total_tokens} tokens")
+                return result
+
+            except asyncio.TimeoutError:
+                last_error = TimeoutError(f"Mistral vision API timed out after 120s (attempt {attempt + 1}/{max_retries})")
+                logger.warning(str(last_error))
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Mistral vision API error on attempt {attempt + 1}/{max_retries}: {e}")
+
+            # If this was the last attempt, raise the error
+            if attempt == max_retries - 1:
+                logger.error(f"Mistral vision API failed after {max_retries} attempts")
+                raise last_error
+
+            # Exponential backoff: 2s, 4s, 8s, 16s
+            backoff = min(2 ** (attempt + 1), 32)
+            logger.info(f"Retrying vision call in {backoff}s...")
+            await asyncio.sleep(backoff)
+
+        raise last_error or Exception("Mistral vision API call failed")
 
     async def _call_ollama_vision(self, image_bytes: bytes, prompt: str, model_name: str) -> str:
         """Call Ollama vision API"""

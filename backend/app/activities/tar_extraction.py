@@ -55,9 +55,11 @@ async def extract_tar_and_create_documents(job_id: str) -> List[str]:
 
                 logger.info(f"Found {total_files} files in TAR archive")
 
-                for member in members:
+                for file_idx, member in enumerate(members):
                     if not member.isfile():
                         continue
+
+                    activity.heartbeat(f"Extracting file {file_idx + 1}/{total_files}")
 
                     # Security: Prevent path traversal attacks
                     if member.name.startswith('/') or member.name.startswith('..') or '..' in member.name:
