@@ -47,35 +47,37 @@ async def extract_tar_and_create_documents(job_id: str) -> List[str]:
         document_ids = []
 
         try:
+            import os
+
             with tarfile.open(fileobj=tar_buffer, mode='r:*') as tar:
                 members = tar.getmembers()
-                total_files = len([m for m in members if m.isfile()])
-                job.total_files = total_files
-                await db.commit()
+                skipped_files = 0
 
-                logger.info(f"Found {total_files} files in TAR archive")
+                logger.info(f"Found {len([m for m in members if m.isfile()])} total files in TAR archive")
 
                 for file_idx, member in enumerate(members):
                     if not member.isfile():
                         continue
 
-                    activity.heartbeat(f"Extracting file {file_idx + 1}/{total_files}")
+                    activity.heartbeat(f"Extracting file {file_idx + 1}")
 
                     # Security: Prevent path traversal attacks
                     if member.name.startswith('/') or member.name.startswith('..') or '..' in member.name:
                         logger.warning(f"Skipping potentially malicious path: {member.name}")
+                        skipped_files += 1
                         continue
 
                     # Security: Block symlinks and hardlinks
                     if member.issym() or member.islnk():
                         logger.warning(f"Skipping symlink/hardlink: {member.name}")
+                        skipped_files += 1
                         continue
 
-                    # Security: Sanitize filename
-                    import os
+                    # Sanitize filename, skip macOS metadata files (._*) and hidden files
                     safe_filename = os.path.basename(member.name)
                     if not safe_filename or safe_filename.startswith('.'):
-                        logger.warning(f"Skipping invalid filename: {member.name}")
+                        logger.debug(f"Skipping hidden/metadata file: {member.name}")
+                        skipped_files += 1
                         continue
 
                     # Extract file
@@ -96,7 +98,12 @@ async def extract_tar_and_create_documents(job_id: str) -> List[str]:
 
                         logger.debug(f"Created document {doc.id} for file {safe_filename}")
 
+                # Set total_files to actual processable documents (not metadata)
+                job.total_files = len(document_ids)
                 await db.commit()
+
+                if skipped_files > 0:
+                    logger.info(f"Skipped {skipped_files} hidden/metadata files")
                 logger.info(f"Created {len(document_ids)} document records")
 
         except Exception as e:
