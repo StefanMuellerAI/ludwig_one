@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
-router = APIRouter(dependencies=[Depends(require_job_access)])
+router = APIRouter()
 
 
 async def get_temporal_client() -> Client:
@@ -267,7 +267,7 @@ async def get_job_status(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{job_id}/download")
+@router.get("/{job_id}/download", dependencies=[Depends(require_job_access)])
 @limiter.limit("20/minute")
 async def download_result_archive(
     request: Request,
@@ -320,7 +320,7 @@ async def download_result_archive(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{job_id}/insight")
+@router.get("/{job_id}/insight", dependencies=[Depends(require_job_access)])
 @limiter.limit("20/minute")
 async def get_insight_report(
     request: Request,
