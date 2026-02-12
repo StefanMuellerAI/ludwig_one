@@ -11,11 +11,6 @@ export default function Upload() {
   const [dragActive, setDragActive] = useState(false)
   const [showInvalidFileDialog, setShowInvalidFileDialog] = useState(false)
 
-  const isArchiveFile = (name: string) => {
-    const lower = name.toLowerCase()
-    return lower.endsWith('.tar') || lower.endsWith('.tar.gz') || lower.endsWith('.tgz') || lower.endsWith('.zip')
-  }
-
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       if (file.name.toLowerCase().endsWith('.pdf')) {
